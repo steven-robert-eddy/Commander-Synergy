@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commander Synergy Finder</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <h1>Commander Synergy Finder</h1>
+    <p class="subtitle">Find mechanically synergistic cards using rule-based oracle text analysis.</p>
+
+    <div class="search-row">
+      <div class="autocomplete">
+        <input id="card-input" type="text" placeholder="Enter a card name..." autocomplete="off">
+        <ul id="suggestions" class="suggestions hidden"></ul>
+      </div>
+      <button id="search-btn">Find Synergies</button>
+    </div>
+
+    <div class="options-row">
+      <label>
+        <input type="checkbox" id="same-ci">
+        Same color identity only
+      </label>
+      <label>
+        Results:
+        <input type="number" id="top-n" value="20" min="1" max="100">
+      </label>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+    <div id="source-card" class="source-card hidden"></div>
+    <ul id="results" class="results"></ul>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

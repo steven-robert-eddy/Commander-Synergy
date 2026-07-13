@@ -85,6 +85,25 @@ def _cmd_find(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    if not db.DB_PATH.exists():
+        print(
+            f"{db.DB_PATH} does not exist yet. Run `synergy-finder update-data` first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    uvicorn.run(
+        "synergy_finder.web.app:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="synergy-finder",
@@ -124,6 +143,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Only show cards whose color identity fits within the source card's (useful for commanders).",
     )
     find_parser.set_defaults(func=_cmd_find)
+
+    serve_parser = subparsers.add_parser(
+        "serve", help="Run the web app (FastAPI + a small vanilla-JS frontend)."
+    )
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1).")
+    serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000).")
+    serve_parser.add_argument(
+        "--reload", action="store_true", help="Auto-reload on code changes (development only)."
+    )
+    serve_parser.set_defaults(func=_cmd_serve)
 
     return parser
 

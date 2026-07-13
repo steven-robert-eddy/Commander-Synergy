@@ -101,14 +101,52 @@ priors, not validated against real card data (see Phase 2's known gap —
 same underlying issue). Worth sanity-checking top matches for a handful
 of well-known commanders once `update-data` has actually run.
 
-## Phase 4 — Interface (not started)
+## Phase 4 — Interface ✅ done
 
-- `synergy-finder find "Korvold, Fae-Cursed King"` already works
-  end-to-end (built in Phase 3) — what's left here is UX polish: e.g.
-  making `find` the implicit default so `synergy-finder "<name>"` works
-  without the subcommand, as the original plan sketched, and/or richer
-  output formatting.
-- Web UI: deferred, no design decisions made yet.
+User decided this should be more of an app than a bare CLI. Stack
+decision (asked, not assumed): **FastAPI + plain HTML/JS**, local-only
+for now — no separate frontend build step, no deployment/hosting setup.
+
+- `synergy_finder/web/app.py` — FastAPI app exposing:
+  - `GET /api/cards/search?q=&limit=` — substring name search for
+    autocomplete (`db.search_card_names`, new in this phase).
+  - `GET /api/synergy?name=&top=&same_color_identity=` — same ranking
+    `match.find_synergies` produces, as JSON (source card + list of
+    matches with name/type_line/score/explanation/matched_tags/shared
+    creature types).
+  - `GET /` — serves the static frontend's `index.html`.
+  - 503 (not 500) if `data/cards.db` doesn't exist yet — tells the user
+    to run `update-data` rather than a bare stack trace.
+- `synergy_finder/web/static/` — one HTML page, vanilla JS
+  (`app.js`, debounced autocomplete with keyboard nav, no framework),
+  and CSS with light/dark support via `prefers-color-scheme`. Served
+  directly by FastAPI's `StaticFiles`; no Node/npm anywhere in this repo.
+- CLI: `synergy-finder serve [--host] [--port] [--reload]` launches it
+  via `uvicorn.run("synergy_finder.web.app:app", ...)`. Refuses to start
+  with a clear error if `data/cards.db` is missing.
+- `synergy-finder find` (Phase 3) is untouched and still works
+  standalone — the web app is a second, independent consumer of
+  `match.find_synergies`, not a replacement.
+- Verified with Playwright against a screenshot of the running app
+  (search → autocomplete → ranked results with explanations) — this was
+  an actual rendered-browser check, not just curling the API.
+- Tests: `tests/test_web.py` uses FastAPI's `TestClient` +
+  `monkeypatch` on `db.connect` to point at a temp DB built from the
+  same offline fixture used elsewhere. New dev-only extras group in
+  `pyproject.toml` (`pip install -e ".[dev]"`) adds `httpx` (required by
+  `TestClient`) alongside `pytest`.
+
+**Known gaps / deliberately deferred:**
+- No deployment/hosting story yet — user explicitly said local-only for
+  now. Revisit if/when that changes (containerizing is easy since it's
+  just `uvicorn` + a SQLite file, but nothing's been set up).
+- No auth, no rate limiting, no pagination beyond `top`/`limit` query
+  params — fine for a local single-user tool, would need attention
+  before exposing this beyond localhost.
+- The `StarletteDeprecationWarning` about `httpx` vs `httpx2` in test
+  output comes from FastAPI's `TestClient` internals, not our code —
+  harmless for now, but if a future FastAPI/Starlette upgrade removes
+  the old `httpx` code path, `test_web.py`'s import will need updating.
 
 ## Project layout (current)
 
@@ -117,13 +155,17 @@ synergy_finder/
   bulk_data.py   # download + cache Scryfall's oracle_cards bulk file
   db.py          # load cached JSON into SQLite, run tagging (Phase 1 + 2)
   tags.py        # regex-based mechanical theme tag definitions + tagger (Phase 2)
-  cli.py         # `synergy-finder` command-line entry point
   match.py       # rank cards by weighted tag/creature-type overlap (Phase 3)
+  cli.py         # `synergy-finder` command-line entry point
+  web/
+    app.py       # FastAPI app: JSON API + serves the static frontend (Phase 4)
+    static/      # index.html / app.js / style.css — no build step
 tests/
   fixtures/sample_cards.json  # small hand-written card sample for offline tests
   test_db.py
   test_tags.py
   test_match.py
+  test_web.py
 PLAN.md          # this file
 README.md        # setup + usage instructions
 ```

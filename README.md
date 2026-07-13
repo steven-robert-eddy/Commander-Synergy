@@ -6,9 +6,8 @@ analysis of Scryfall oracle text (no LLM calls, no per-card API requests).
 
 ## Status
 
-Phase 1 (data setup), Phase 2 (tagging), and Phase 3 (matching) are
-done. A dedicated Phase 4 interface (nicer CLI UX / web UI) is next —
-`synergy-finder find` already works today, see below.
+All four phases are done: data setup, tagging, matching, and a web app
+(FastAPI + vanilla JS) on top of the same matching engine the CLI uses.
 
 ## Setup
 
@@ -93,6 +92,27 @@ synergy-finder find "Korvold, Fae-Cursed King" --top 10 --same-color-identity
 fits within the source card's — handy when the source is a commander and
 you only want suggestions that are actually castable in that deck.
 
+## Web app
+
+A small FastAPI backend (`synergy_finder/web/app.py`) serves a JSON API
+plus a single-page vanilla-JS frontend (`synergy_finder/web/static/`) —
+a search box with autocomplete, a "same color identity" toggle, and a
+ranked results list with per-match explanations. No Node/build step; the
+frontend is plain HTML/CSS/JS served directly by the backend.
+
+```bash
+synergy-finder serve
+```
+
+Then open http://127.0.0.1:8000. Flags: `--host`, `--port`, `--reload`
+(auto-restart on code changes, for development).
+
+API endpoints, if you want to hit them directly or build another client:
+
+- `GET /api/cards/search?q=<partial name>&limit=10` — autocomplete.
+- `GET /api/synergy?name=<card name>&top=20&same_color_identity=false` —
+  same ranking `synergy-finder find` produces, as JSON.
+
 ## Project layout
 
 ```
@@ -102,17 +122,21 @@ synergy_finder/
   tags.py        # regex-based mechanical theme tag definitions + tagger
   match.py       # rank cards by weighted tag/creature-type overlap
   cli.py         # `synergy-finder` command-line entry point
+  web/
+    app.py       # FastAPI app (JSON API + serves the static frontend)
+    static/      # index.html / app.js / style.css — no build step
 tests/
   fixtures/sample_cards.json  # small hand-written card sample for offline tests
   test_db.py
   test_tags.py
   test_match.py
+  test_web.py
 ```
 
 ## Running tests
 
 ```bash
-pip install -e . pytest
+pip install -e ".[dev]"
 pytest
 ```
 

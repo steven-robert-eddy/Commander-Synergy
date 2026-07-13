@@ -197,6 +197,15 @@ def get_card_by_name(conn: sqlite3.Connection, name: str) -> sqlite3.Row | None:
     return row
 
 
+def search_card_names(conn: sqlite3.Connection, query: str, limit: int = 10) -> list[str]:
+    """Substring name search for autocomplete, shortest/most-alphabetical names first."""
+    rows = conn.execute(
+        "SELECT DISTINCT name FROM cards WHERE name_lower LIKE ? ORDER BY length(name) ASC, name ASC LIMIT ?",
+        (f"%{query.lower()}%", limit),
+    ).fetchall()
+    return [row["name"] for row in rows]
+
+
 def iter_all_cards(conn: sqlite3.Connection) -> Iterator[sqlite3.Row]:
     cursor = conn.execute("SELECT * FROM cards")
     yield from cursor
