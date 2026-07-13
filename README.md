@@ -6,8 +6,8 @@ analysis of Scryfall oracle text (no LLM calls, no per-card API requests).
 
 ## Status
 
-Phase 1 (data setup) is done. Tagging, matching, and the CLI lookup
-command are next.
+Phase 1 (data setup) and Phase 2 (tagging) are done. Matching/ranking and
+the `synergy-finder <card name>` lookup command are next.
 
 ## Setup
 
@@ -40,16 +40,52 @@ This:
 Both `data/oracle_cards.json` and `data/cards.db` are gitignored — they're
 regenerated locally rather than committed.
 
+## Tagging
+
+Every card is scanned against a set of regex-based rules
+(`synergy_finder/tags.py`) that assign mechanical theme tags — e.g.
+`plus1_plus1_counters`, `sacrifice_synergy`, `graveyard_recursion`,
+`tokens`, `etb_triggers`, `card_draw`, `artifact_matters`,
+`enchantment_matters`, `combat_tricks`, `keyword_combat`, `lifegain`,
+`ramp`, `spellslinger`, `reanimation`. Each tag also carries a rough
+"specificity" weight, used later to weight rarer, more telling overlaps
+above generic ones when scoring matches.
+
+Creature types (for tribal synergy) are extracted separately from each
+card's type line rather than tagged as a single boolean.
+
+Tags run automatically as part of `update-data` / `build_database`, and
+are stored in a `card_tags` table (plus `card_creature_types`) so matching
+can query them with plain SQL instead of re-scanning oracle text. To
+recompute tags without re-downloading data (e.g. after editing
+`tags.py`):
+
+```bash
+synergy-finder retag
+```
+
+To debug what a single card tags as:
+
+```bash
+synergy-finder tag "Korvold, Fae-Cursed King"
+```
+
+Adding a new tag just means adding a new `Tag(...)` entry to the `TAGS`
+tuple in `synergy_finder/tags.py` — the tagger, CLI, and DB population
+all pick it up automatically.
+
 ## Project layout
 
 ```
 synergy_finder/
   bulk_data.py   # download + cache Scryfall's oracle_cards bulk file
-  db.py          # load cached JSON into a queryable SQLite database
+  db.py          # load cached JSON into a queryable SQLite database, run tagging
+  tags.py        # regex-based mechanical theme tag definitions + tagger
   cli.py         # `synergy-finder` command-line entry point
 tests/
   fixtures/sample_cards.json  # small hand-written card sample for offline tests
   test_db.py
+  test_tags.py
 ```
 
 ## Running tests

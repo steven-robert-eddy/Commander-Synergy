@@ -7,6 +7,7 @@ import sqlite3
 from pathlib import Path
 from typing import Iterable, Iterator
 
+from . import tags as tags_module
 from .bulk_data import CARDS_PATH, DATA_DIR
 
 DB_PATH = DATA_DIR / "cards.db"
@@ -31,6 +32,21 @@ CREATE TABLE IF NOT EXISTS cards (
     raw TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cards_name_lower ON cards (name_lower);
+
+CREATE TABLE IF NOT EXISTS card_tags (
+    card_id TEXT NOT NULL REFERENCES cards (id),
+    tag TEXT NOT NULL,
+    PRIMARY KEY (card_id, tag)
+);
+CREATE INDEX IF NOT EXISTS idx_card_tags_tag ON card_tags (tag);
+CREATE INDEX IF NOT EXISTS idx_card_tags_card_id ON card_tags (card_id);
+
+CREATE TABLE IF NOT EXISTS card_creature_types (
+    card_id TEXT NOT NULL REFERENCES cards (id),
+    creature_type TEXT NOT NULL,
+    PRIMARY KEY (card_id, creature_type)
+);
+CREATE INDEX IF NOT EXISTS idx_card_creature_types_type ON card_creature_types (creature_type);
 """
 
 
@@ -95,6 +111,7 @@ def build_database(
         db_path.unlink()
 
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     try:
         conn.executescript(SCHEMA)
         conn.executemany(
@@ -108,10 +125,52 @@ def build_database(
             (_card_row(card) for card in cards),
         )
         conn.commit()
+        populate_tags(conn)
     finally:
         conn.close()
 
     return db_path
+
+
+def populate_tags(conn: sqlite3.Connection) -> None:
+    """(Re)compute mechanical theme tags and creature types for every card.
+
+    Safe to call on an already-populated DB — clears and rebuilds both
+    derived tables from the current `cards` rows.
+    """
+    conn.execute("DELETE FROM card_tags")
+    conn.execute("DELETE FROM card_creature_types")
+
+    tag_rows: list[tuple[str, str]] = []
+    type_rows: list[tuple[str, str]] = []
+    for row in conn.execute("SELECT id, oracle_text, keywords, type_line FROM cards"):
+        card_id = row["id"]
+        card = {
+            "oracle_text": row["oracle_text"],
+            "keywords": row["keywords"],
+        }
+        for tag_id in tags_module.tag_card(card):
+            tag_rows.append((card_id, tag_id))
+        for creature_type in tags_module.extract_creature_types(row["type_line"]):
+            type_rows.append((card_id, creature_type))
+
+    conn.executemany("INSERT INTO card_tags (card_id, tag) VALUES (?, ?)", tag_rows)
+    conn.executemany(
+        "INSERT INTO card_creature_types (card_id, creature_type) VALUES (?, ?)", type_rows
+    )
+    conn.commit()
+
+
+def get_tags_for_card(conn: sqlite3.Connection, card_id: str) -> set[str]:
+    rows = conn.execute("SELECT tag FROM card_tags WHERE card_id = ?", (card_id,)).fetchall()
+    return {row["tag"] for row in rows}
+
+
+def get_creature_types_for_card(conn: sqlite3.Connection, card_id: str) -> set[str]:
+    rows = conn.execute(
+        "SELECT creature_type FROM card_creature_types WHERE card_id = ?", (card_id,)
+    ).fetchall()
+    return {row["creature_type"] for row in rows}
 
 
 def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:

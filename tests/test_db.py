@@ -45,6 +45,42 @@ def test_split_card_combines_face_text(tmp_path):
         conn.close()
 
 
+def test_build_database_populates_tags_and_creature_types(tmp_path):
+    cards = _load_fixture_cards()
+    db_path = tmp_path / "cards.db"
+    db.build_database(cards=cards, db_path=db_path)
+
+    conn = db.connect(db_path=db_path)
+    try:
+        korvold = db.get_card_by_name(conn, "Korvold, Fae-Cursed King")
+        korvold_tags = db.get_tags_for_card(conn, korvold["id"])
+        assert "plus1_plus1_counters" in korvold_tags
+        assert "sacrifice_synergy" in korvold_tags
+
+        korvold_types = db.get_creature_types_for_card(conn, korvold["id"])
+        assert korvold_types == {"Dragon", "Noble"}
+
+        total_tags = conn.execute("SELECT COUNT(*) FROM card_tags").fetchone()[0]
+        assert total_tags > 0
+    finally:
+        conn.close()
+
+
+def test_populate_tags_is_idempotent(tmp_path):
+    cards = _load_fixture_cards()
+    db_path = tmp_path / "cards.db"
+    db.build_database(cards=cards, db_path=db_path)
+
+    conn = db.connect(db_path=db_path)
+    try:
+        before = conn.execute("SELECT COUNT(*) FROM card_tags").fetchone()[0]
+        db.populate_tags(conn)
+        after = conn.execute("SELECT COUNT(*) FROM card_tags").fetchone()[0]
+        assert before == after
+    finally:
+        conn.close()
+
+
 def test_prefix_lookup(tmp_path):
     cards = _load_fixture_cards()
     db_path = tmp_path / "cards.db"
