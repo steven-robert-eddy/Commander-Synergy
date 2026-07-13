@@ -1,0 +1,73 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "Korvold, Fae-Cursed King",
+    "mana_cost": "{2}{B}{R}{G}",
+    "cmc": 5.0,
+    "type_line": "Legendary Creature — Dragon Noble",
+    "oracle_text": "Flying, trample\nWhenever Korvold, Fae-Cursed King enters the battlefield or a land you control is put into a graveyard, put a +1/+1 counter on Korvold and draw a card.\nSacrifice an artifact, creature, or land: Put a +1/+1 counter on Korvold, Fae-Cursed King.",
+    "colors": ["B", "G", "R"],
+    "color_identity": ["B", "G", "R"],
+    "keywords": ["Flying", "Trample"],
+    "power": "4",
+    "toughness": "4",
+    "rarity": "mythic",
+    "set": "eld",
+    "legalities": {"commander": "legal"}
+  },
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "name": "Ashnod's Altar",
+    "mana_cost": "{3}",
+    "cmc": 3.0,
+    "type_line": "Artifact",
+    "oracle_text": "Sacrifice a creature: Add {C}{C}.",
+    "colors": [],
+    "color_identity": [],
+    "keywords": [],
+    "rarity": "uncommon",
+    "set": "atq",
+    "legalities": {"commander": "legal"}
+  },
+  {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "name": "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki",
+    "mana_cost": "{1}{R}",
+    "cmc": 2.0,
+    "type_line": "Enchantment Creature — Goblin Shaman // Enchantment Creature — Goblin Shaman",
+    "colors": [],
+    "color_identity": ["R"],
+    "keywords": ["Food"],
+    "rarity": "rare",
+    "set": "neo",
+    "legalities": {"commander": "legal"},
+    "card_faces": [
+      {
+        "name": "Fable of the Mirror-Breaker",
+        "mana_cost": "{1}{R}",
+        "type_line": "Enchantment Creature — Goblin Shaman",
+        "oracle_text": "When this Saga enters, create a 2/2 red Goblin Shaman creature token, then create a Food token.\n(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nII, III — Discard a card, then draw a card."
+      },
+      {
+        "name": "Reflection of Kiki-Jiki",
+        "mana_cost": "",
+        "type_line": "Enchantment Creature — Goblin Shaman",
+        "oracle_text": "{1}{R}, {T}: Create a token that's a copy of another target nonlegendary creature you control, except it's a Goblin and it has haste. Sacrifice it at the beginning of the next end step."
+      }
+    ]
+  },
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "name": "Hardened Scales",
+    "mana_cost": "{1}{G}",
+    "cmc": 2.0,
+    "type_line": "Enchantment",
+    "oracle_text": "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.",
+    "colors": ["G"],
+    "color_identity": ["G"],
+    "keywords": [],
+    "rarity": "uncommon",
+    "set": "bng",
+    "legalities": {"commander": "legal"}
+  }
+]

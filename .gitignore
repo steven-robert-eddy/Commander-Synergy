@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Cached Scryfall bulk data and derived DB — regenerated via `synergy-finder update-data`
+data/*.json
+data/*.db
+data/bulk_meta.json
+!data/.gitkeep
