@@ -6,8 +6,9 @@ analysis of Scryfall oracle text (no LLM calls, no per-card API requests).
 
 ## Status
 
-Phase 1 (data setup) and Phase 2 (tagging) are done. Matching/ranking and
-the `synergy-finder <card name>` lookup command are next.
+Phase 1 (data setup), Phase 2 (tagging), and Phase 3 (matching) are
+done. A dedicated Phase 4 interface (nicer CLI UX / web UI) is next —
+`synergy-finder find` already works today, see below.
 
 ## Setup
 
@@ -74,6 +75,24 @@ Adding a new tag just means adding a new `Tag(...)` entry to the `TAGS`
 tuple in `synergy_finder/tags.py` — the tagger, CLI, and DB population
 all pick it up automatically.
 
+## Matching
+
+`synergy_finder/match.py` ranks every other card in the DB against a
+given card by weighted tag overlap: for each shared tag, add that tag's
+`weight` (from `tags.py`); for each shared creature type (tribal
+synergy, tracked separately from tags), add a flat `TRIBAL_TYPE_WEIGHT`
+bonus. Results are returned as `Match` objects with a `.explain()`
+string listing which tags/types drove the score.
+
+```bash
+synergy-finder find "Korvold, Fae-Cursed King"
+synergy-finder find "Korvold, Fae-Cursed King" --top 10 --same-color-identity
+```
+
+`--same-color-identity` restricts results to cards whose color identity
+fits within the source card's — handy when the source is a commander and
+you only want suggestions that are actually castable in that deck.
+
 ## Project layout
 
 ```
@@ -81,11 +100,13 @@ synergy_finder/
   bulk_data.py   # download + cache Scryfall's oracle_cards bulk file
   db.py          # load cached JSON into a queryable SQLite database, run tagging
   tags.py        # regex-based mechanical theme tag definitions + tagger
+  match.py       # rank cards by weighted tag/creature-type overlap
   cli.py         # `synergy-finder` command-line entry point
 tests/
   fixtures/sample_cards.json  # small hand-written card sample for offline tests
   test_db.py
   test_tags.py
+  test_match.py
 ```
 
 ## Running tests

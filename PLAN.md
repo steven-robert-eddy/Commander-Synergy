@@ -67,35 +67,47 @@ nothing, usually means a regex bug — see the `sacrifice_synergy` "a" vs
 "after" false-positive caught and fixed during Phase 2 for the kind of
 thing to watch for).
 
-## Phase 3 — Matching (not started)
+## Phase 3 — Matching ✅ done
 
-Plan: given an input card name, look up its tags + creature types, then
-score every other card in `cards` by:
+- `synergy_finder/match.py::find_synergies(conn, card_name, top_n=20,
+  same_color_identity_only=False) -> list[Match]`.
+- Scoring: sum of `tags.tag_weight()` for every tag shared with the
+  source card, plus `TRIBAL_TYPE_WEIGHT` (1.5, a flat bonus, not
+  normalized against tag weights yet) per shared creature type.
+  No Jaccard-style normalization by total tag count — a card with many
+  overlapping tags currently outranks one with fewer regardless of how
+  "tag-heavy" either card's oracle text is. Revisit if this over/under-
+  ranks verbose cards once real data is loaded.
+- `same_color_identity_only` flag filters candidates to those whose
+  color identity is a subset of the source's — applied before ranking/
+  truncation (not after), so `top_n` results are always filled from the
+  filtered set, not shrunk by post-hoc filtering.
+- Excludes the source card itself from results. Returns `[]` (not an
+  error) for a card with no tags and no creature types — nothing to
+  compare on.
+- `Match.explain()` renders which tags (by label) and which creature
+  types drove the score — satisfies the "short explanation of why"
+  requirement.
+- Raises `match.CardNotFoundError` for an unknown card name; CLI catches
+  it and prints a clean message.
+- CLI: `synergy-finder find "<name>" [--top N] [--same-color-identity]`.
+- Tests: `tests/test_match.py`, verified against the same 4-card
+  fixture — Fable (3 shared tags, score 2.4) correctly outranks Ashnod's
+  Altar and Hardened Scales (1 shared tag each, score 1.3) for a Korvold
+  query.
 
-- Tag overlap, weighted by each tag's `weight` (rarer/more specific tags
-  should count for more — current weights are a starting guess, may
-  want to replace with real inverse-document-frequency from the corpus
-  once it's loaded).
-- Creature type overlap (tribal) as a separate signal/bonus, since it's
-  not part of the tag-weight scheme.
-- Return top N ranked matches with a short "why" explanation (which
-  tags/types overlapped and their weights) — this is a stated
-  requirement, not optional polish.
-
-Open questions to resolve when starting this phase:
-- Exact scoring formula (sum of overlapping tag weights? Jaccard-style
-  normalization by total tag count so verbose cards don't win by sheer
-  tag count?).
-- Whether to exclude the input card's own color identity mismatches, or
-  leave color-identity filtering to the caller/CLI flag.
-- Where this logic lives: likely `synergy_finder/match.py` with a
-  `find_synergies(conn, card_name, top_n=20) -> list[Match]`-shaped API,
-  consumed by both the CLI and (later) a web UI.
+**Known gap:** tag weights and `TRIBAL_TYPE_WEIGHT` are still hand-picked
+priors, not validated against real card data (see Phase 2's known gap —
+same underlying issue). Worth sanity-checking top matches for a handful
+of well-known commanders once `update-data` has actually run.
 
 ## Phase 4 — Interface (not started)
 
-- CLI: `synergy-finder find "Korvold, Fae-Cursed King"` prints ranked
-  matches with reasons (builds on Phase 3's `find_synergies`).
+- `synergy-finder find "Korvold, Fae-Cursed King"` already works
+  end-to-end (built in Phase 3) — what's left here is UX polish: e.g.
+  making `find` the implicit default so `synergy-finder "<name>"` works
+  without the subcommand, as the original plan sketched, and/or richer
+  output formatting.
 - Web UI: deferred, no design decisions made yet.
 
 ## Project layout (current)
@@ -106,10 +118,12 @@ synergy_finder/
   db.py          # load cached JSON into SQLite, run tagging (Phase 1 + 2)
   tags.py        # regex-based mechanical theme tag definitions + tagger (Phase 2)
   cli.py         # `synergy-finder` command-line entry point
+  match.py       # rank cards by weighted tag/creature-type overlap (Phase 3)
 tests/
   fixtures/sample_cards.json  # small hand-written card sample for offline tests
   test_db.py
   test_tags.py
+  test_match.py
 PLAN.md          # this file
 README.md        # setup + usage instructions
 ```

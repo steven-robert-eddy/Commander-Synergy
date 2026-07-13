@@ -7,7 +7,7 @@ import sys
 
 import requests
 
-from . import bulk_data, db, tags
+from . import bulk_data, db, match, tags
 
 
 def _cmd_update_data(args: argparse.Namespace) -> int:
@@ -60,6 +60,31 @@ def _cmd_tag(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_find(args: argparse.Namespace) -> int:
+    conn = db.connect()
+    try:
+        try:
+            matches = match.find_synergies(
+                conn,
+                args.name,
+                top_n=args.top,
+                same_color_identity_only=args.same_color_identity,
+            )
+        except match.CardNotFoundError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+    finally:
+        conn.close()
+
+    if not matches:
+        print(f"No synergistic cards found for {args.name!r}.")
+        return 0
+
+    for i, m in enumerate(matches, start=1):
+        print(f"{i}. {m.name} (score {m.score}) — {m.explain()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="synergy-finder",
@@ -85,6 +110,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tag_parser.add_argument("name", help="Card name (exact or prefix match, case-insensitive).")
     tag_parser.set_defaults(func=_cmd_tag)
+
+    find_parser = subparsers.add_parser(
+        "find", help="Rank cards by mechanical synergy with the given card."
+    )
+    find_parser.add_argument("name", help="Card name (exact or prefix match, case-insensitive).")
+    find_parser.add_argument(
+        "--top", type=int, default=20, help="Max number of ranked matches to show (default: 20)."
+    )
+    find_parser.add_argument(
+        "--same-color-identity",
+        action="store_true",
+        help="Only show cards whose color identity fits within the source card's (useful for commanders).",
+    )
+    find_parser.set_defaults(func=_cmd_find)
 
     return parser
 
